@@ -49,3 +49,60 @@ class RouteService:
         route = response.json()
         """  print(f"Route: {route}") """
         return route
+    
+    def determine_routes_and_stops(self, trip):
+        """Dertermine complete route with stops"""
+       
+        current_location = self.geocode(trip.current_location)
+        pickup_location = self.geocode(trip.pickup_location)
+        dropoff_location = self.geocode(trip.dropoff_location)
+        
+        if not all([current_location, pickup_location, dropoff_location]):
+            return {"error": "Failed to get address geo details for one or more locations"}
+        
+        routesFromCurrentLocationToPickupLocation = self.get_route(current_location, pickup_location)
+        routesFromPickupLocationToDropoffLocation = self.get_route(pickup_location, dropoff_location)
+        
+        route_details = self._determine_routes(routesFromCurrentLocationToPickupLocation, routesFromPickupLocationToDropoffLocation)
+        
+        # TODO: Determine stops
+        stops = {}
+        
+        return {
+            "route_details": route_details,
+            "stops": stops
+        }
+        
+        
+    def _determine_routes(self, routesFromCurrentLocationToPickupLocation, routesFromPickupLocationToDropoffLocation):
+        """Process route data from OSRM"""
+        # In a real app, you'd do more processing here
+        pickup_route = routesFromCurrentLocationToPickupLocation['routes'][0]
+        dropoff_route = routesFromPickupLocationToDropoffLocation['routes'][0]
+        
+        # Calculate total distance and duration
+        pickup_distance = pickup_route['distance'] / 1000  # km to miles (approximate)
+        pickup_duration = pickup_route['duration'] / 3600  # seconds to hours
+        
+        dropoff_distance = dropoff_route['distance'] / 1000  # km to miles (approximate)
+        dropoff_duration = dropoff_route['duration'] / 3600  # seconds to hours
+        
+        # Combine route geometries
+        combined_geometry = {
+            "pickup_route": pickup_route['geometry'],
+            "dropoff_route": dropoff_route['geometry']
+        }
+        
+        route_data = {
+            "total_distance": pickup_distance + dropoff_distance,
+            "total_duration": pickup_duration + dropoff_duration,
+            "pickup_distance": pickup_distance,
+            "pickup_duration": pickup_duration,
+            "dropoff_distance": dropoff_distance,
+            "dropoff_duration": dropoff_duration,
+            "geometry": combined_geometry
+        }
+        
+        print(f"Logging route data ${route_data}")
+        
+        return route_data
