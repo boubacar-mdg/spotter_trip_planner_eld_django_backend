@@ -1,4 +1,5 @@
 from django.db import models
+from .enums import StopType
 
 class Trip(models.Model):
     current_location = models.CharField(max_length=255)
@@ -15,7 +16,10 @@ class RouteStop(models.Model):
     location = models.CharField(max_length=255)
     arrival_time = models.DateTimeField()
     departure_time = models.DateTimeField(null=True, blank=True)
-    stop_type = models.CharField(max_length=50)  # 'rest', 'fuel', 'pickup', 'dropoff'
+    stop_type =  models.CharField(
+        max_length=50,
+        choices=StopType.choices(),
+    )
     
     def __str__(self):
         return f"{self.stop_type} at {self.location}"
@@ -23,7 +27,7 @@ class RouteStop(models.Model):
 class ELDLog(models.Model):
     trip = models.ForeignKey(Trip, related_name='eld_logs', on_delete=models.CASCADE)
     date = models.DateField()
-    log_data = models.JSONField()  # Store log activities
+    log_data = models.JSONField()
     
     def __str__(self):
         return f"Log for {self.date}"
