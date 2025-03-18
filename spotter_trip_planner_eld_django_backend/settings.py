@@ -53,16 +53,11 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    #'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://spotter-api.lavandesn.com",
-    "https://spotter-api.lavandesn.com",
-    "https://spotter.lavandesn.com",
-    "http://spotter.lavandesn.com",
-]
+#CORS_ALLOW_ALL_ORIGINS = True
+ALLOWED_HOSTS = ['*']
 
 
 ROOT_URLCONF = 'spotter_trip_planner_eld_django_backend.urls'
