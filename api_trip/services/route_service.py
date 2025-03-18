@@ -11,6 +11,10 @@ class RouteService:
         self.osrm_base_url = "http://router.project-osrm.org/route/v1/driving"
         self.geocode_base_url = "https://api.opencagedata.com/geocode/v1/json"
         self.api_key = OPENCAGE_API_KEY
+        self.add_time_for_pickup = 1
+        self.add_time_for_dropoff = 1
+        self.add_time_for_fuel_stop = 0.5
+        self.add_time_for_rest_stop = 10
         
 
     def geocode(self, givenLocation):
@@ -20,7 +24,7 @@ class RouteService:
 
         url = self.geocode_base_url
 
-        print(f"Requesting URL: {url}?q={givenLocation}&key={self.api_key}")
+        print(f"Geocode request URL => {url}?q={givenLocation}&key={self.api_key}")
 
         response = requests.get(url, params=params)
 
@@ -41,7 +45,7 @@ class RouteService:
     def get_route(self, start_coords, end_coords):
         """Get route details between two given coordinates"""
         url = f"{self.osrm_base_url}/{start_coords['lon']},{start_coords['lat']};{end_coords['lon']},{end_coords['lat']}"
-        print(f"Url for getting route beetwen the start and end coordinates: {url}")
+        print(f"Url for getting route details beetwen the start and end coordinates => {url}")
         params = {
             'overview': 'full',
             'geometries': 'geojson',
@@ -114,7 +118,7 @@ class RouteService:
             "geometry": combined_geometry
         }
         
-        """ print(f"Logging route data ${route_data}") """
+        """ print(f"Logging route data {route_data}") """
         
         return route_data
     
@@ -127,7 +131,7 @@ class RouteService:
         
         total_available_drive_time = 70.0
         daily_drive_limit = total_available_drive_time / 8 
-        remaining_drive_time = total_available_drive_time - trip.current_cycle_hours
+        remaining_drive_time = daily_drive_limit - trip.current_cycle_hours
         remaining_duty_time = 14.0 - trip.current_cycle_hours
         
         stops.append({
@@ -137,12 +141,111 @@ class RouteService:
             "stop_type": StopType.START.value,
         })
         
+        # Pickup phase
+        pickup_drive_time = route_data["pickup_duration"]
         
-        # TODO: handle pickup phase
+        print(f"Pickup phase")
+        print(f"Remaining drive time => {str(remaining_drive_time)}")
+        print(f"Remaining duty time => {str(remaining_duty_time)}")
+        print(f"Pickup drive time => {str(pickup_drive_time)}")
     
+        if pickup_drive_time > remaining_drive_time:
+            rest_stop = self._get_rest_stop(current_time, remaining_drive_time)
+            stops.append(rest_stop["rest_stop"])
+            current_time = rest_stop["current_time"]
+            remaining_drive_time = daily_drive_limit
+            remaining_duty_time = 14.0
         
-        # TODO: handle dropoff phase
+        current_time += datetime.timedelta(hours=pickup_drive_time)
+        remaining_drive_time -= pickup_drive_time
+        remaining_duty_time -= pickup_drive_time
         
+        stops.append({
+            "location": trip.pickup_location,
+            "arrival_time": current_time,
+            "departure_time": current_time + datetime.timedelta(hours=self.add_time_for_pickup),
+            "stop_type": StopType.PICKUP.value
+        })
+        
+        current_time += datetime.timedelta(hours=self.add_time_for_pickup)
+        remaining_duty_time -= self.add_time_for_pickup
+        
+        
+        # Dropoff phase
+        dropoff_drive_time = route_data["dropoff_duration"]
+        
+        print(f"Dropoff phase")
+        print(f"Remaining drive time => {str(remaining_drive_time)}")
+        print(f"Remaining duty time => {str(remaining_duty_time)}")
+        print(f"Dropoff drive time => {str(dropoff_drive_time)}")
+        
+        total_distance = route_data["total_distance"]
+        fuel_stops_needed = int(total_distance / 1000)
+        
+        print(f"Total distance => {str(total_distance)}")
+        print(f"Fuel stops needed => {str(fuel_stops_needed)}")
+        
+        if fuel_stops_needed > 0:
+            distance_between_stops = total_distance / (fuel_stops_needed + 1)
+            total_trip_drive_time = (pickup_drive_time + dropoff_drive_time)
+            time_between_stops = total_trip_drive_time / (fuel_stops_needed + 1)
+            
+            print(f"Total tripd drive time => {str(distance_between_stops)}")
+            print(f"Time between stops => {str(time_between_stops)}")
+            
+
+            for i in range(fuel_stops_needed):
+                if time_between_stops > remaining_drive_time:
+                    rest_stop = self._get_rest_stop(current_time, remaining_drive_time, rest_location=f"Resting Location {i+1}")
+                    stops.append(rest_stop["rest_stop"])
+                    current_time = rest_stop["current_time"]
+                    remaining_drive_time = daily_drive_limit
+                    remaining_duty_time = 14.0
+
+                fuel_location = f"Fuel Stop {i+1}"
+                current_time += datetime.timedelta(hours=time_between_stops)
+                remaining_drive_time -= time_between_stops
+                remaining_duty_time -= time_between_stops
+
+                stops.append({
+                    "location": fuel_location,
+                    "arrival_time": current_time,
+                    "departure_time": current_time + datetime.timedelta(hours=self.add_time_for_fuel_stop),
+                    "stop_type": StopType.FUEL.value
+                })
+                current_time += datetime.timedelta(hours=self.add_time_for_fuel_stop)
+                remaining_duty_time -= self.add_time_for_fuel_stop
+
+       
+       
+        remaining_drive_to_dropoff = dropoff_drive_time - (fuel_stops_needed * time_between_stops)
+        if remaining_drive_to_dropoff > remaining_drive_time:
+            rest_stop = self._get_rest_stop(current_time, remaining_drive_time, rest_location=f"Final Resting Location")
+            stops.append(rest_stop["rest_stop"])
+            current_time = rest_stop["current_time"]
+            remaining_drive_time = total_available_drive_time
+            remaining_duty_time = 14.0
+
+        current_time += datetime.timedelta(hours=remaining_drive_to_dropoff)
+        
+        stops.append({
+            "location": trip.dropoff_location,
+            "arrival_time": current_time,
+            "departure_time": current_time + datetime.timedelta(hours=self.add_time_for_dropoff),
+            "stop_type": StopType.DROPOFF.value
+        })
+
         return stops
     
     
+    def _get_rest_stop(self, current_time, remaining_drive_time, rest_duration=10, rest_location="Resting Location"):
+        print("Interpreting rest stop...")
+        rest_duration = self.add_time_for_rest_stop
+        rest_stop =  {
+            "location": rest_location,
+            "arrival_time": current_time + datetime.timedelta(hours=remaining_drive_time),
+            "departure_time": current_time + datetime.timedelta(hours=remaining_drive_time + rest_duration),
+            "stop_type": StopType.REST.value
+        }
+        current_time += datetime.timedelta(hours=remaining_drive_time + rest_duration)
+        return {"current_time":current_time,"rest_stop":rest_stop}
