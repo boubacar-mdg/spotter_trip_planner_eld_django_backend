@@ -62,6 +62,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://spotter-api.lavandesn.com",
     "https://spotter.lavandesn.com",
     "http://spotter.lavandesn.com",
+    "spotter-api.lavandesn.com",
 ]
 
 
