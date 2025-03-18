@@ -57,7 +57,7 @@ MIDDLEWARE = [
 ]
 
 #CORS_ALLOW_ALL_ORIGINS = True
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['https://spotter.lavandesn.com/','https://spotter.lavandesn.com','https://spotter-api.lavandesn.com/','https://spotter-api.lavandesn.com','http://spotter.lavandesn.com/','http://spotter.lavandesn.com','http://spotter-api.lavandesn.com/','http://spotter-api.lavandesn.com']
 
 
 ROOT_URLCONF = 'spotter_trip_planner_eld_django_backend.urls'
