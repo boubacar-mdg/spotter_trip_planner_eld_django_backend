@@ -2,7 +2,8 @@ import requests
 import datetime
 import os
 from ..enums import StopType
-from ..models import RouteStop
+from ..models import RouteStop, ELDLog
+from api_trip.services.eld_service import ELDService
 
 OPENCAGE_API_KEY = os.getenv("OPENCAGE_API_KEY", default="")
 
@@ -82,7 +83,17 @@ class RouteService:
                 departure_time=stop_data['departure_time'],
                 stop_type=stop_data['stop_type']
             )
+            
         
+        eld_service = ELDService()
+        eld_logs = eld_service.generate_logs(trip, stops)
+        
+        for log_data in eld_logs:
+            ELDLog.objects.create(
+                trip=trip,
+                date=datetime.datetime.fromisoformat(log_data['date']),
+                log_data=log_data['log_data']
+            )
         
         return {
             "route_details": route_details,
