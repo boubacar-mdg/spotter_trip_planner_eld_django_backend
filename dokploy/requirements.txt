@@ -3,13 +3,14 @@ Django==5.0.3
 python-dotenv==1.0.1
 
 # Database adapters
-mysqlclient==2.2.1  # MySQL adapter
+PyMySQL==1.1.0  # MySQL adapter with pure Python implementation
+cryptography==42.0.2  # Required for PyMySQL with sha256_password or caching_sha2_password auth
 
 # WSGI server
 gunicorn==21.2.0
 
 # Django REST framework (optional)
-# djangorestframework==3.14.0
+djangorestframework==3.14.0
 
 # Additional useful packages
 django-filter==24.1
