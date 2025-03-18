@@ -3,7 +3,7 @@ Django==5.0.3
 python-dotenv==1.0.1
 
 # Database adapters
-psycopg2-binary==2.9.9  # PostgreSQL adapter
+mysqlclient==2.2.1  # MySQL adapter
 
 # WSGI server
 gunicorn==21.2.0
