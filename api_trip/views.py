@@ -15,7 +15,7 @@ class TripViewSet(viewsets.ModelViewSet):
         """Determine route with stops"""
         trip = self.get_object()
         
-        print(f"Current trip: ${str(trip)}")
+        print(f"Current trip: {str(trip)}")
         
         route_service = RouteService()
         route_result = route_service.determine_routes_and_stops(trip)
